@@ -90,13 +90,20 @@
        
       var strokeScale = d3.scale.log().domain([1,d3.max(links,function(d) { return d.count; })]).range([1,20]);
       
-      var link = svg.selectAll("line.link")
-      .data(links)
-      .enter().append("line")
-      .style('stroke', 'black')
-      .style("stroke-width", function(d,i) {
-        return strokeScale(d.count);
-      });
+      var chord = d3.svg.chord()
+        .source(function(d) {return d.source})
+        .target(function(d) {return d.target})
+        .radius(20)
+        .startAngle(1)
+        .endAngle(1);
+
+      var link = svg.selectAll("path.link")
+        .data(links)
+        .enter().append("path")
+        .style('stroke', 'black')
+        .style("stroke-width", function(d,i) {
+          return strokeScale(d.count);
+        });
       
       
     var node = svg.selectAll("circle.node")
@@ -112,10 +119,9 @@
     .html(function(d) {return d.name;});
 
     force.on("tick", function() {
-      link.attr("x1", function(d) { return d.source.x; })
-      .attr("y1", function(d) { return d.source.y; })
-      .attr("x2", function(d) { return d.target.x; })
-      .attr("y2", function(d) { return d.target.y; });
+      link.attr("d", function(dx) {
+        return chord(dx);
+      });
      
     node.attr("cx", function(d) { return d.x; })
       .attr("cy", function(d) { return d.y; });
