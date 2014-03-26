@@ -7,7 +7,6 @@ var rl = readline.createInterface({
   output: process.stdout,
   stderr: process.stderr
 });
-var sysCalls = [];
 
 rl.question("strace ", function(answer) {
   var spawnProc = answer.split(" ");
@@ -70,6 +69,7 @@ function handler (req, res) {
 
 io.sockets.on('connection', function (socket) {
   socket.on('strace', function(data) {
+    
     var call = data.val;
     var spawnProc = call.split(" ");
     spawnProc.unshift("-ttt");
@@ -78,6 +78,8 @@ io.sockets.on('connection', function (socket) {
     var lastLine = "";
 
     echoProc.stderr.on('data', function (chunk) {
+      
+      var sysCalls = [];
       var lines = chunk.toString().split("\n");
       lines[0] = lastLine + lines[0];
       lastLine = lines.pop();
@@ -98,7 +100,8 @@ io.sockets.on('connection', function (socket) {
           });
         }
       }
-      console.log(sysCalls);
+      socket.emit('sysCalls', sysCalls);
     });
+  
   })
 });

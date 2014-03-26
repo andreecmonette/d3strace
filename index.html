@@ -9,7 +9,10 @@
 			var socket = io.connect('http://localhost');
 			document.getElementById('submit').addEventListener('click', function() {
 				socket.emit('strace', { val: document.getElementById('call').value });
-			})
+      });
+      socket.on('sysCalls', function(data) {
+        console.log(data);
+      });
 		</script>
 	</body>
 </html>
