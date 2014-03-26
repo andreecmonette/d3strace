@@ -56,12 +56,13 @@
   var nodeColor = d3.scale.category20();
   var radiusScale;
   var strokeScale;
+  var selfStrokeScale;
   var force = d3.layout.force()
     .linkDistance(50)
     .size([width,height])
   var link;
-  var bilinks = [];
   var node;
+  var selfRef;
   var label;
 
   function parseLines(l) {
@@ -95,20 +96,27 @@
       nodes.push({
           "name":key,
           "count":nodeCount[key],
-          "charge":-200
+          "color":count,
+          "charge":-1000
         }
       );
     }
     for (key in linkCount) {
       var pair = key.split(",");
-      links.push({
+      if (pair[0] == pair[1]) {
+        nodes[index[pair[0]]].selfRef = true;
+        nodes[index[pair[0]]].selfRefCount = linkCount[key];
+      } else {
+        links.push({
 
-        "source":index[pair[0]],
-        "target":index[pair[1]],
-        "count":linkCount[key]
-      });      
+          "source":index[pair[0]],
+          "target":index[pair[1]],
+          "count":linkCount[key]
+        });      
+      }
     }
 
+    /*
     links.forEach(function(link) {
       var s = nodes[link.source],
           t = nodes[link.target],
@@ -125,9 +133,11 @@
         bilinks.push([link.count, s, t]);
       }
     });
+    */
 
     radiusScale = d3.scale.log().domain([1,d3.max(nodes,function(d) { return d.count; })]).range([5,20]);
-    strokeScale = d3.scale.log().domain([1,d3.max(links,function(d) { return d.count; })]).range([1,20]);
+    strokeScale = d3.scale.linear().domain([1,d3.max(links,function(d) { return d.count; })]).range([1,20]);
+    selfStrokeScale = d3.scale.log().domain([1,d3.max(links,function(d) { return d.count; })]).range([1,10]);
 
     render();
   }
@@ -136,32 +146,65 @@
     force
       .nodes(nodes)
       .links(links)
+      .linkDistance(150)
       .charge(function(d,i) {
         return d.charge;
       })
       .start();
 
     link = svg.selectAll(".link")
-      .data(bilinks)
-      .enter().append("path")
+      .data(links)
+      .enter().append("line")
       .attr('class','link')
-      .style('stroke', 'black')
+      .style('stroke', function(d,i) {
+        return nodeColor(d.source.color);
+      })
       .style("stroke-width", function(d,i) {
-        return strokeScale(d[0]);
+        return strokeScale(d.count);
       })
       .attr("stroke-dasharray", "5, 10");
 
     node = svg.selectAll(".node")
       .data(nodes)
-        .enter().append("circle")
-        .attr("r", function(d) {
-          return d.count ? radiusScale(d.count) : 0;
-        })
+      .enter().append("circle")
+      .attr("r", function(d) {
+        return d.count ? radiusScale(d.count) : 0;
+      })
       .style("fill", function(d,i) {
-        return nodeColor(i);
-      } )
-      .style('opacity',0.8)
+        return nodeColor(d.color);
+      })
       .call(force.drag);
+
+    selfRef = svg.selectAll(".node")
+      .data(nodes)
+      .enter().append("circle")
+      .style('display', function(d) {
+        return d.selfRef ? 'block' : 'none';
+      })
+      .attr("r", function(d) {
+        return d.count ? radiusScale(d.count) : 0;
+      })
+      .attr('stroke', function(d) {
+        return nodeColor(d.color);
+      })
+      .attr('stroke-width', function(d) {
+        return selfStrokeScale(d.selfRefCount);
+      })
+      .attr('fill','none')
+      .attr("stroke-dasharray", "5, 10");
+
+    function manPageLinker(d) {
+      if (d.name == "START" | d.name == "END" | d.name == "") {
+        return;
+        } else {
+        window.open('http://man7.org/linux/man-pages/man2/' + d.name + '.2.html', '_blank');
+      }
+    }
+
+    node
+      .on('dblclick', function(d) {
+        manPageLinker(d);
+      })
 
     label = svg.selectAll('.node')
       .data(nodes)
@@ -172,21 +215,20 @@
       });
 
     force.on("tick", function() {
-      link.attr("d", function(d) {
-        if (d.length == 3) {
-          return "M" + d[1].x + "," + d[1].y
-              + "L" + d[2].x + "," + d[2].y;
-        } else {
-          return "M" + d[1].x + "," + d[1].y
-              + "S" + d[2].x + "," + d[2].y
-              + " " + d[3].x + "," + d[3].y
-              + "S" + d[3].x + "," + d[3].y
-              + " " + d[4].x + "," + d[4].y;
-        }
-      });
+      link.attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
       node.attr("transform", function(d) {
         return "translate(" + d.x + "," + d.y + ")";
       });
+
+      selfRef
+        .attr("transform", function(d) {
+          return "translate(" + (d.x + radiusScale(d.count) * 0.7) + "," + (d.y - radiusScale(d.count) * 0.7) + ")";
+        });
+
       label
         .attr('x', function(d) { return d.x; })
         .attr('y', function(d) { return d.y + radiusScale(d.count) + 10; });
@@ -197,6 +239,7 @@
       thetick -= .1;
       thetick = thetick % 10000;
       link.attr("stroke-dashoffset", thetick.toString() + "%");
+      selfRef.attr("stroke-dashoffset", thetick.toString() + "%");
     }
 
     window.setInterval(animator, 66);
