@@ -1,27 +1,30 @@
 <html>
 <head>
 <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script src="/socket.io/socket.io.js"></script>
 <style>
+  .link {
+    fill:none;
+    stroke: #999;
+    stroke-opacity: .5;
+  }
 
-      .link {
-        fill:none;
-        stroke: #999;
-        stroke-opacity: .5;
-      }
-
-      .node {
-        font-family:Arial;
-        font-size:8pt;
-        font-weight:bold;
-        text-anchor:middle;
-        stroke:white;
-        stroke-width:0.4px;
-      }
+  .node {
+    font-family:Arial;
+    font-size:8pt;
+    font-weight:bold;
+    text-anchor:middle;
+    stroke:white;
+    stroke-width:0.4px;
+  }
 </style>
 </head>
 <body>
-	<input type="file" id="files" name="files[]" multiple />
+	<input id='call' type='text'/>
+  <button id='submit'>
 <script type="text/javascript">
+  var socket = io.connect('/');
+  /*
   function handleFileSelect(evt) {
     var files = evt.target.files;
     var output = [];
@@ -36,23 +39,60 @@
   }
 
   document.getElementById('files').addEventListener('change', handleFileSelect, false);
+  */
+
+  var input = d3.select(document.getElementById('call'));
+  var submit = d3.select(document.getElementById('submit'));
+  var q = {};
+  var qi = 0;
+  input
+    .style('position','absolute')
+    .style('top',height + 10)
+    .style('left',0);
+
+  submit
+    .style('position','absolute')
+    .style('top',height + 10)
+    .style('left',50);
+
+  document.getElementById('submit').addEventListener('click', function() {
+        socket.emit('strace', { val: document.getElementById('call').value });
+      });
+      socket.on('sysCalls', function(data) {
+        var d = data.content;
+        var i = data.index;
+
+        q[i] = d;
+
+      });
+
+  function process() {
+    if (q[qi] != undefined) {
+      var data = q[qi];
+
+      parseData(data);
+
+      qi++;
+    }
+  }
+
+  setInterval(process, 200);
 
   var width = window.innerWidth;
   var height = window.innerHeight - 50;
+
+  var index = {};
   var nodes = [];
   var links = [];
+  var lastCall = null;
+
   var svg = d3.select(document.body).append("svg")
       .style('position','absolute')
       .style('top',0)
       .style('left',0)
       .attr("width", width)
       .attr("height", height);
-  var upload = d3.select(document.getElementById('files'));
-  upload
-    .style('position','absolute')
-    .style('top',height + 10)
-    .style('left',0)
-
+  
   var nodeColor = d3.scale.category20();
   var radiusScale;
   var strokeScale;
@@ -65,6 +105,13 @@
   var selfRef;
   var label;
 
+  function parseData(d) {
+    for (var i = 0  ; i < d.length ; i ++ ) {
+      
+    }
+  };
+
+  /*
   function parseLines(l) {
     l.push("END");
     l.unshift("START");
@@ -88,7 +135,6 @@
       }
     }
     var data = {};
-    var index = {};
     var count = 0;
     for (key in nodeCount) {
       index[key] = count;
@@ -116,30 +162,16 @@
       }
     }
 
-    /*
-    links.forEach(function(link) {
-      var s = nodes[link.source],
-          t = nodes[link.target],
-          i = {'charge':-700}; // intermediate node
-      if (s == t) {
-        var a = {'charge':-100}
-        nodes.push(a);
-        var b = {'charge':-100};
-        nodes.push(b);
-
-        links.push({source: s, target: a}, {source: a, target: b}, {source: b, target: t});
-        bilinks.push([link.count, s, a, b, t]);
-      } else {
-        bilinks.push([link.count, s, t]);
-      }
-    });
-    */
-
     radiusScale = d3.scale.log().domain([1,d3.max(nodes,function(d) { return d.count; })]).range([5,20]);
     strokeScale = d3.scale.linear().domain([1,d3.max(links,function(d) { return d.count; })]).range([1,20]);
     selfStrokeScale = d3.scale.log().domain([1,d3.max(links,function(d) { return d.count; })]).range([1,10]);
 
     render();
+  }
+  */
+
+  function initialize() {
+    
   }
 
   function render() { 

@@ -69,7 +69,7 @@ function handler (req, res) {
 
 io.sockets.on('connection', function (socket) {
   socket.on('strace', function(data) {
-    
+    var index = 0;
     var call = data.val;
     var spawnProc = call.split(" ");
     spawnProc.unshift("-ttt");
@@ -100,7 +100,7 @@ io.sockets.on('connection', function (socket) {
           });
         }
       }
-      socket.emit('sysCalls', sysCalls);
+      socket.emit('sysCalls', {index:index++, content:sysCalls});
     });
   
   })
