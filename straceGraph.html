@@ -1,5 +1,8 @@
 <html>
-<head>
+  <head>
+    <title>
+      Strace Visualizer
+    </title>
 <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
 </head>
 <body>
@@ -8,6 +11,15 @@
 
   var nodes = [];
   var links = [];
+  var LARGEPRIME = 32452843;
+  function colorHash(str) {
+    k = 1;
+    for (chr in str) {
+      k *= str.charCodeAt(chr);
+    }
+    k = k % LARGEPRIME;
+    return (k % 0xffffff).toString(16);
+  }
 
   function parseLines(l) {
     l.push("END");
@@ -39,7 +51,8 @@
       count ++;
       nodes.push({
           "name":key,
-          "count":nodeCount[key]
+          "count":nodeCount[key],
+          "color":colorHash(key)
         }
       );
     }
@@ -74,23 +87,23 @@
   
   function render() { 
     var force = d3.layout.force()
-      .charge(-700)
-      .linkDistance(50)
-      .size([500,500])
+      .charge(-500)
+      .linkDistance(70)
+      .size([1000,1000])
       .nodes(nodes)
       .links(links)
       .start();
        
-      var svg = d3.select(document.body).append("svg")
-      .attr("width", 500)
-      .attr("height", 500);
+    var svg = d3.select(document.body).append("svg")
+      .attr("width", 1000)
+      .attr("height", 1000);
        
-      var nodeColor = d3.scale.category10();
-      var radiusScale = d3.scale.log().domain([1,d3.max(nodes,function(d) { return d.count; })]).range([5,20]);
+    var nodeColor = d3.scale.category10();
+    var radiusScale = d3.scale.log().domain([1,d3.max(nodes,function(d) { return d.count; })]).range([5,20]);
        
-      var strokeScale = d3.scale.log().domain([1,d3.max(links,function(d) { return d.count; })]).range([1,20]);
+    var strokeScale = d3.scale.log().domain([1,d3.max(links,function(d) { return d.count; })]).range([1,5]);
       
-      var link = svg.selectAll("line.link")
+    var link = svg.selectAll("line.link")
       .data(links)
       .enter().append("line")
       .style('stroke', 'black')
@@ -105,21 +118,35 @@
       .attr("r", function(d) {
         return radiusScale(d.count);
       })
-    .style("fill", "black" )
+    .style("fill", function(d) { return d.color;})
     .call(force.drag);
 
     node.append("title")
-    .html(function(d) {return d.name;});
+    .text(function(d) {return d.name;});
+    
 
     force.on("tick", function() {
       link.attr("x1", function(d) { return d.source.x; })
       .attr("y1", function(d) { return d.source.y; })
       .attr("x2", function(d) { return d.target.x; })
-      .attr("y2", function(d) { return d.target.y; });
-     
-    node.attr("cx", function(d) { return d.x; })
+      .attr("y2", function(d) { return d.target.y; })
+      .attr("stroke-dasharray", "5, 10")
+
+
+      node.attr("cx", function(d) { return d.x; })
       .attr("cy", function(d) { return d.y; });
     })
+
+    var thetick = 0;
+    function animator(){
+      
+      thetick -= .1;
+      thetick = thetick % 100;
+      link.attr("stroke-dashoffset", thetick.toString() + "%");
+    
+    }
+
+    window.setInterval(animator, 66);
   }
 
 </script>
