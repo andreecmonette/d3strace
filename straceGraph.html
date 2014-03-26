@@ -1,13 +1,68 @@
 <html>
 <head>
 <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<style>
+
+      .link {
+        fill:none;
+        stroke: #999;
+        stroke-opacity: .5;
+      }
+
+      .node {
+        font-family:Arial;
+        font-size:8pt;
+        font-weight:bold;
+        text-anchor:middle;
+        stroke:white;
+        stroke-width:0.4px;
+      }
+</style>
 </head>
 <body>
 	<input type="file" id="files" name="files[]" multiple />
 <script type="text/javascript">
+  function handleFileSelect(evt) {
+    var files = evt.target.files;
+    var output = [];
+    for (var i = 0, f; f = files[i]; i++) {
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var lines = reader.result.split('\n');
+        parseLines(lines);
+      }
+      reader.readAsText(f);
+    }
+  }
 
+  document.getElementById('files').addEventListener('change', handleFileSelect, false);
+
+  var width = window.innerWidth;
+  var height = window.innerHeight - 50;
   var nodes = [];
   var links = [];
+  var svg = d3.select(document.body).append("svg")
+      .style('position','absolute')
+      .style('top',0)
+      .style('left',0)
+      .attr("width", width)
+      .attr("height", height);
+  var upload = d3.select(document.getElementById('files'));
+  upload
+    .style('position','absolute')
+    .style('top',height + 10)
+    .style('left',0)
+
+  var nodeColor = d3.scale.category20();
+  var radiusScale;
+  var strokeScale;
+  var force = d3.layout.force()
+    .linkDistance(50)
+    .size([width,height])
+  var link;
+  var bilinks = [];
+  var node;
+  var label;
 
   function parseLines(l) {
     l.push("END");
@@ -39,7 +94,8 @@
       count ++;
       nodes.push({
           "name":key,
-          "count":nodeCount[key]
+          "count":nodeCount[key],
+          "charge":-200
         }
       );
     }
@@ -52,80 +108,98 @@
         "count":linkCount[key]
       });      
     }
+
+    links.forEach(function(link) {
+      var s = nodes[link.source],
+          t = nodes[link.target],
+          i = {'charge':-700}; // intermediate node
+      if (s == t) {
+        var a = {'charge':-100}
+        nodes.push(a);
+        var b = {'charge':-100};
+        nodes.push(b);
+
+        links.push({source: s, target: a}, {source: a, target: b}, {source: b, target: t});
+        bilinks.push([link.count, s, a, b, t]);
+      } else {
+        bilinks.push([link.count, s, t]);
+      }
+    });
+
+    radiusScale = d3.scale.log().domain([1,d3.max(nodes,function(d) { return d.count; })]).range([5,20]);
+    strokeScale = d3.scale.log().domain([1,d3.max(links,function(d) { return d.count; })]).range([1,20]);
+
     render();
   }
 
-
-
-  function handleFileSelect(evt) {
-		var files = evt.target.files;
-		var output = [];
-		for (var i = 0, f; f = files[i]; i++) {
-			var reader = new FileReader();
-			reader.onload = function(e) {
-				var lines = reader.result.split('\n');
-        parseLines(lines);
-			}
-			reader.readAsText(f);
-		}
-	}
-
-	document.getElementById('files').addEventListener('change', handleFileSelect, false);
-  
   function render() { 
-    var force = d3.layout.force()
-      .charge(-700)
-      .linkDistance(50)
-      .size([500,500])
+    force
       .nodes(nodes)
       .links(links)
-      .start();
-       
-      var svg = d3.select(document.body).append("svg")
-      .attr("width", 500)
-      .attr("height", 500);
-       
-      var nodeColor = d3.scale.category10();
-      var radiusScale = d3.scale.log().domain([1,d3.max(nodes,function(d) { return d.count; })]).range([5,20]);
-       
-      var strokeScale = d3.scale.log().domain([1,d3.max(links,function(d) { return d.count; })]).range([1,20]);
-      
-      var chord = d3.svg.chord()
-        .source(function(d) {return d.source})
-        .target(function(d) {return d.target})
-        .radius(20)
-        .startAngle(1)
-        .endAngle(1);
-
-      var link = svg.selectAll("path.link")
-        .data(links)
-        .enter().append("path")
-        .style('stroke', 'black')
-        .style("stroke-width", function(d,i) {
-          return strokeScale(d.count);
-        });
-      
-      
-    var node = svg.selectAll("circle.node")
-    .data(nodes)
-      .enter().append("circle")
-      .attr("r", function(d) {
-        return radiusScale(d.count);
+      .charge(function(d,i) {
+        return d.charge;
       })
-    .style("fill", "black" )
-    .call(force.drag);
+      .start();
 
-    node.append("title")
-    .html(function(d) {return d.name;});
+    link = svg.selectAll(".link")
+      .data(bilinks)
+      .enter().append("path")
+      .attr('class','link')
+      .style('stroke', 'black')
+      .style("stroke-width", function(d,i) {
+        return strokeScale(d[0]);
+      })
+      .attr("stroke-dasharray", "5, 10");
+
+    node = svg.selectAll(".node")
+      .data(nodes)
+        .enter().append("circle")
+        .attr("r", function(d) {
+          return d.count ? radiusScale(d.count) : 0;
+        })
+      .style("fill", function(d,i) {
+        return nodeColor(i);
+      } )
+      .style('opacity',0.8)
+      .call(force.drag);
+
+    label = svg.selectAll('.node')
+      .data(nodes)
+      .enter().append('text')
+      .attr('class','node')
+      .text(function(d) {
+        return d.name;
+      });
 
     force.on("tick", function() {
-      link.attr("d", function(dx) {
-        return chord(dx);
+      link.attr("d", function(d) {
+        if (d.length == 3) {
+          return "M" + d[1].x + "," + d[1].y
+              + "L" + d[2].x + "," + d[2].y;
+        } else {
+          return "M" + d[1].x + "," + d[1].y
+              + "S" + d[2].x + "," + d[2].y
+              + " " + d[3].x + "," + d[3].y
+              + "S" + d[3].x + "," + d[3].y
+              + " " + d[4].x + "," + d[4].y;
+        }
       });
-     
-    node.attr("cx", function(d) { return d.x; })
-      .attr("cy", function(d) { return d.y; });
+      node.attr("transform", function(d) {
+        return "translate(" + d.x + "," + d.y + ")";
+      });
+      label
+        .attr('x', function(d) { return d.x; })
+        .attr('y', function(d) { return d.y + radiusScale(d.count) + 10; });
     })
+
+    var thetick = 0;
+    function animator(){
+      thetick -= .1;
+      thetick = thetick % 10000;
+      link.attr("stroke-dashoffset", thetick.toString() + "%");
+    }
+
+    window.setInterval(animator, 66);
   }
 
 </script>
