@@ -14,7 +14,7 @@
         font-size:8pt;
         font-weight:bold;
         text-anchor:middle;
-        stroke:white;
+        stroke:black;
         stroke-width:0.4px;
       }
 </style>
@@ -136,7 +136,7 @@
     */
 
     radiusScale = d3.scale.log().domain([1,d3.max(nodes,function(d) { return d.count; })]).range([5,20]);
-    strokeScale = d3.scale.linear().domain([1,d3.max(links,function(d) { return d.count; })]).range([1,20]);
+    strokeScale = d3.scale.log().domain([1,d3.max(links,function(d) { return d.count; })]).range([1,20]);
     selfStrokeScale = d3.scale.log().domain([1,d3.max(links,function(d) { return d.count; })]).range([1,10]);
 
     render();
@@ -175,6 +175,14 @@
       })
       .call(force.drag);
 
+    label = svg.selectAll('.node')
+      .data(nodes)
+      .enter().append('text')
+      .attr('class','node')
+      .text(function(d) {
+        return d.name;
+        });
+
     selfRef = svg.selectAll(".node")
       .data(nodes)
       .enter().append("circle")
@@ -206,13 +214,6 @@
         manPageLinker(d);
       })
 
-    label = svg.selectAll('.node')
-      .data(nodes)
-      .enter().append('text')
-      .attr('class','node')
-      .text(function(d) {
-        return d.name;
-      });
 
     force.on("tick", function() {
       link.attr("x1", function(d) { return d.source.x; })
