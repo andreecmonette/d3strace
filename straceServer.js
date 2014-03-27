@@ -86,7 +86,7 @@ io.sockets.on('connection', function (socket) {
       lastLine = lines.pop();
       
       for (line in lines) {
-        var matchArray = lines[line].match(/(\S+?) (\S+?)\((.*?)\) +\= (.*)$/)
+        var matchArray = lines[line].match(/^(\S+?) (\S+?)\((.*?)\) +\= (.*)$/)
         if (matchArray) {
         sysCalls.push({
           
@@ -96,9 +96,9 @@ io.sockets.on('connection', function (socket) {
           retVal : matchArray[4]
         });
         } else {
-          sysCalls.push({
-            call : lines[line]
-          });
+          //sysCalls.push({
+          //  call : lines[line]
+          //});
         }
       }
       socket.emit('sysCalls', {index:index++, content:sysCalls});

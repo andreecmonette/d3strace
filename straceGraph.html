@@ -27,6 +27,15 @@
   var nodeIndex = {};
   var linkIndex = {};
   var lastCall = "START";
+  var LARGEPRIME = 32452843;
+  function colorHash(str) {
+   k = 1;
+   for (chr in str) {
+     k *= str.charCodeAt(chr);
+   } 
+     k = k % LARGEPRIME;
+     return (k % 0xffffff).toString(16);
+   }
 
   //ui
   var b = d3.select(document.body);
@@ -78,7 +87,7 @@
     .links(links)
     .linkDistance(150)
     .charge(function(d,i) {
-      return d.charge;
+      return -700; 
     })
     .on('tick', tick);
 
@@ -160,6 +169,8 @@
   }
 
   function render() {
+    
+    force.start();
     //console.log(force.links());
     link = link.data(force.links(), function(d) { return d.source.call + "-" + d.target.call; });
     node = node.data(force.nodes(), function(d) { return d.call;});
@@ -181,8 +192,8 @@
       .attr("r", function(d) {
         return d.count ? scale.radius(d.count) : 0;
       })
-      .attr("fill", function(d,i) {
-        return scale.color(d.index);
+    .attr("fill", function(d,i) {
+        return "#" + colorHash(d.call);
       })
       .call(force.drag);
 
@@ -222,7 +233,6 @@
         manPageLinker(d);
       });
     
-    force.start();
   } 
 
   var thetick = 0;
