@@ -172,10 +172,11 @@
   }
 
   function init() {
-    scale.radius = d3.scale.linear().domain([1,d3.max(nodes,function(d) { return d.count; })]).range([5,30]);
-    scale.stroke = d3.scale.linear().domain([1,200]).range([2,20]).clamp(true);
-        //d3.max(links,function(d) { return d.count; })]).range([3,20]);
-    scale.stroke_self = d3.scale.log().domain([1,d3.max(links,function(d) { return d.count; })]).range([1,10]);
+    scale.radius = d3.scale.linear().domain([1,d3.max(nodes,function(d) { return d.count; })]).range([8,30]);
+    scale.stroke = d3.scale.linear().domain([1,d3.max(links,function(d) { return d.count; })]).range([2,20]);
+        //,200]).range([2,20]).clamp(true);
+        //
+    scale.stroke_self = d3.scale.log().domain([1,d3.max(links,function(d) { return d.count; })]).range([2,10]);
     scale.color = d3.scale.category20();
   }
 
@@ -214,7 +215,10 @@
       .attr('class','label')
       .text(function(d) {
         return d.call;
-      });
+        })
+      .on('dblclick', function(d) {
+          manPageLinker(d);
+       });
 /*
     selfRef.enter().append('circle')
       .style('display', function(d) {
