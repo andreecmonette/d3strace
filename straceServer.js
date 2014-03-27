@@ -55,7 +55,7 @@ var app = require('http').createServer(handler)
 app.listen(3000);
 
 function handler (req, res) {
-  console.log(req);
+  //console.log(req);
   fs.readFile(__dirname + "/straceGraph.html",
   function (err, data) {
     if (err) {

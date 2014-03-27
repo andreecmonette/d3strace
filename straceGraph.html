@@ -21,17 +21,31 @@
 </head>
 <body>
 <script type="text/javascript">
+  ///core functions
+  var links = [];
+  var nodes = [];
+  var nodeIndex = {};
+  var linkIndex = {};
+  var lastCall = "START";
+
+
+  
   //ui
   var b = d3.select(document.body);
   var topBar = b.append('div')
     .style('position','absolute');
-    var inputProcess = topBar.append('input')
+  var inputProcess = topBar.append('input')
       .style('position','absolute')
       .attr('type','text');
-    var submit = topBar.append('button')
+  var submit = topBar.append('button')
       .style('position','absolute');
-   var svg = b.append('svg')
- //   .style('position','absolute');
+  var svg = b.append('svg')
+      .style('position','absolute');
+  var link = svg.selectAll(".link");
+  var node = svg.selectAll(".node");
+  var selfRef = svg.selectAll(".selfLink");
+  var label = svg.selectAll(".label");
+
 
   var w = window.innerWidth;
   var h = window.innerHeight;
@@ -62,6 +76,7 @@
     .style('left',0)
 
   var force = d3.layout.force()
+    .size([w, h - 50])
     .nodes(nodes)
     .links(links)
     .linkDistance(150)
@@ -92,18 +107,6 @@
     .on('click', function() {
       socket.emit('strace', { val: inputProcess.node().value });
     });
-
-  ///core functions
-  var link = svg.selectAll(".link");
-  var node = svg.selectAll(".node");
-  var selfRef = svg.selectAll(".selfLink");
-  var label = svg.selectAll(".label");
-
-  var links = [];
-  var nodes = [];
-  var nodeIndex = {};
-  var linkIndex = {};
-  var lastCall = "START";
 
   function parseData(d) {
     //parse
@@ -160,10 +163,11 @@
   }
 
   function render() {
-    link = link.data(force.links(), function(d) { return d.source.id + "-" + d.target.id; });
-    node = node.data(force.nodes(), function(d) { return d.id;});
-    selfRef = selfRef.data(force.nodes(), function(d) { return d.id;});
-    label = label.data(force.nodes(), function(d) { return d.id;});
+    //console.log(force.links());
+    link = link.data(force.links(), function(d) { return d.source.call + "-" + d.target.call; });
+    node = node.data(force.nodes(), function(d) { return d.call;});
+    //selfRef = selfRef.data(force.nodes(), function(d) { return d.id;});
+    //label = label.data(force.nodes(), function(d) { return d.id;});
 
     link.enter().append('line')
       .attr('class','link')
@@ -175,15 +179,15 @@
       })
       .attr("stroke-dasharray", "5, 10");
 
-    node.enter().append('circle')
+    node.enter().append('circle').attr("class", "node")
       .attr("r", function(d) {
         return d.count ? scale.radius(d.count) : 0;
       })
       .style("fill", function(d,i) {
         return scale.color(d.color);
       })
-      //.call(force.drag);
-
+      .call(force.drag);
+/*
     selfRef.enter().append('circle')
       .style('display', function(d) {
         return d.selfRef ? 'block' : 'none';
@@ -199,7 +203,7 @@
       })
       .attr('fill','none')
       .attr("stroke-dasharray", "5, 10");
-
+*/
     function manPageLinker(d) {
       if (d.name == "START" | d.name == "END" | d.name == "") {
         return;
@@ -213,11 +217,12 @@
         manPageLinker(d);
       })
 
-    label.enter().append('text')
+    /*label.enter().append('text')
       .attr('class','node')
       .text(function(d) {
         return d.call;
-      });
+        });
+    */
   } 
 
   var thetick = 0;
@@ -236,10 +241,13 @@
       .attr("x2", function(d) { return d.target.x; })
       .attr("y2", function(d) { return d.target.y; });
 
-    node.attr("transform", function(d) {
-      return "translate(" + d.x + "," + d.y + ")";
+    node.attr("cx", function(d) {
+      return d.x;
+      })
+    .attr("cy", function(d) {
+      return d.y;
     });
-
+/*
     selfRef
       .attr("transform", function(d) {
         return "translate(" + (d.x + scale.radius(d.count) * 0.7) + "," + (d.y - scale.radius(d.count) * 0.7) + ")";
@@ -248,7 +256,8 @@
     label
       .attr('x', function(d) { return d.x; })
       .attr('y', function(d) { return d.y + scale.radius(d.count) + 10; });
-  }
+ */     
+ }
 
  function processData() {
     if (q[qIndex] != undefined) {
