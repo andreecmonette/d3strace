@@ -82,8 +82,15 @@
     .style('left',0)
     .on('mousedown', function() {
       d3.event.preventDefault();
-    });
-
+      });
+  var squareSize = 50;
+  var square = svg.append("rect")
+    .attr('width', squareSize)
+    .attr('height', squareSize)
+    .attr('x', (w - squareSize)/2)
+    .attr('y', (h - squareSize)/2)
+    .style('stroke', 'black')
+    .attr('fill', 'none');
   var force = d3.layout.force()
     .size([w, h - 50])
     .nodes(nodes)
@@ -165,8 +172,9 @@
   }
 
   function init() {
-    scale.radius = d3.scale.log().domain([1,d3.max(nodes,function(d) { return d.count; })]).range([5,20]);
-    scale.stroke = d3.scale.linear().domain([1,d3.max(links,function(d) { return d.count; })]).range([1,20]);
+    scale.radius = d3.scale.linear().domain([1,d3.max(nodes,function(d) { return d.count; })]).range([5,30]);
+    scale.stroke = d3.scale.linear().domain([1,200]).range([2,20]).clamp(true);
+        //d3.max(links,function(d) { return d.count; })]).range([3,20]);
     scale.stroke_self = d3.scale.log().domain([1,d3.max(links,function(d) { return d.count; })]).range([1,10]);
     scale.color = d3.scale.category20();
   }
@@ -226,10 +234,10 @@
 */
 
     function manPageLinker(d) {
-      if (d.name == "START" | d.name == "END" | d.name == "") {
+      if (d.call == "START" | d.call == "END" | d.call == "") {
         return;
         } else {
-        window.open('http://man7.org/linux/man-pages/man2/' + d.name + '.2.html', '_blank');
+        window.open('http://man7.org/linux/man-pages/man2/' + d.call + '.2.html', '_blank');
       }
     }
 
@@ -265,6 +273,8 @@
       })
       .attr('stroke', function(d,i) {
         if (d.call == lastCall.call) {
+        d.x += (w/2 - d.x) * 0.1
+        d.y += (h/2 - d.y) * 0.1
           return 'red';
         } else {
           return 'none';

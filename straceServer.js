@@ -48,7 +48,7 @@ rl.question("strace ", function(answer) {
 
 
 var app = require('http').createServer(handler)
-  , io = require('socket.io').listen(app)
+  , io = require('socket.io').listen(app, {log : false})
   , fs = require('fs')
   , child_process = require('child_process');
 
