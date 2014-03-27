@@ -61,7 +61,15 @@
     .style('top',50)
     .style('left',0)
 
-  var force = d3.layout.force();
+  var force = d3.layout.force()
+    .nodes(nodes)
+    .links(links)
+    .linkDistance(150)
+    .charge(function(d,i) {
+      return d.charge;
+    })
+    .on('tick', tick);
+
   var scale = {
     radius:null,
     stroke_link:null,
@@ -86,10 +94,10 @@
     });
 
   ///core functions
-  var link;
-  var node;
-  var selfRef;
-  var label;
+  var link = svg.selectAll(".link");
+  var node = svg.selectAll(".node");
+  var selfRef = svg.selectAll(".selfLink");
+  var label = svg.selectAll(".label");
 
   var links = [];
   var nodes = [];
@@ -152,11 +160,12 @@
   }
 
   function render() {
-  
+    link = link.data(force.links(), function(d) { return d.source.id + "-" + d.target.id; });
+    node = node.data(force.nodes(), function(d) { return d.id;});
+    selfRef = selfRef.data(force.nodes(), function(d) { return d.id;});
+    label = label.data(force.nodes(), function(d) { return d.id;});
 
-    link = svg.selectAll(".link")
-      .data(links);
-    link.enter().append("line")
+    link.enter().append('line')
       .attr('class','link')
       .style('stroke', function(d,i) {
         return scale.color(d.source.color);
@@ -166,20 +175,16 @@
       })
       .attr("stroke-dasharray", "5, 10");
 
-    node = svg.selectAll(".node")
-      .data(nodes);
-    node.enter().append("circle")
+    node.enter().append('circle')
       .attr("r", function(d) {
         return d.count ? scale.radius(d.count) : 0;
       })
       .style("fill", function(d,i) {
         return scale.color(d.color);
       })
-      .call(force.drag);
+      //.call(force.drag);
 
-    selfRef = svg.selectAll(".node")
-      .data(nodes)
-      .enter().append("circle")
+    selfRef.enter().append('circle')
       .style('display', function(d) {
         return d.selfRef ? 'block' : 'none';
       })
@@ -208,53 +213,43 @@
         manPageLinker(d);
       })
 
-    label = svg.selectAll('.node')
-      .data(nodes)
-      .enter().append('text')
+    label.enter().append('text')
       .attr('class','node')
       .text(function(d) {
         return d.call;
       });
-
-    
-    var thetick = 0;
-    function animator(){
-      thetick -= .1;
-      thetick = thetick % 10000;
-      link.attr("stroke-dashoffset", thetick.toString() + "%");
-      selfRef.attr("stroke-dashoffset", thetick.toString() + "%");
-    }
-
-    window.setInterval(animator, 66);
   } 
-  force
-      .nodes(nodes)
-      .links(links)
-      .linkDistance(150)
-      .charge(function(d,i) {
-        return d.charge;
-      })
-      .start();
- 
-    force.on("tick", function() {
-      link.attr("x1", function(d) { return d.source.x; })
-        .attr("y1", function(d) { return d.source.y; })
-        .attr("x2", function(d) { return d.target.x; })
-        .attr("y2", function(d) { return d.target.y; });
 
-      node.attr("transform", function(d) {
-        return "translate(" + d.x + "," + d.y + ")";
+  var thetick = 0;
+  function animator(){
+    thetick -= .1;
+    thetick = thetick % 10000;
+    link.attr("stroke-dashoffset", thetick.toString() + "%");
+    selfRef.attr("stroke-dashoffset", thetick.toString() + "%");
+  }
+
+  window.setInterval(animator, 66);
+
+  function tick() {
+    link.attr("x1", function(d) { return d.source.x; })
+      .attr("y1", function(d) { return d.source.y; })
+      .attr("x2", function(d) { return d.target.x; })
+      .attr("y2", function(d) { return d.target.y; });
+
+    node.attr("transform", function(d) {
+      return "translate(" + d.x + "," + d.y + ")";
+    });
+
+    selfRef
+      .attr("transform", function(d) {
+        return "translate(" + (d.x + scale.radius(d.count) * 0.7) + "," + (d.y - scale.radius(d.count) * 0.7) + ")";
       });
 
-      selfRef
-        .attr("transform", function(d) {
-          return "translate(" + (d.x + scale.radius(d.count) * 0.7) + "," + (d.y - scale.radius(d.count) * 0.7) + ")";
-        });
+    label
+      .attr('x', function(d) { return d.x; })
+      .attr('y', function(d) { return d.y + scale.radius(d.count) + 10; });
+  }
 
-      label
-        .attr('x', function(d) { return d.x; })
-        .attr('y', function(d) { return d.y + scale.radius(d.count) + 10; });
-    });
  function processData() {
     if (q[qIndex] != undefined) {
       var data = q[qIndex];
@@ -263,8 +258,8 @@
       
       render();
       qIndex ++;
+      force.start();
     }
-
   }
 
   window.setInterval(processData,200);
