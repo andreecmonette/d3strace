@@ -121,11 +121,9 @@
 
       if (nodeIndex[current.call] == undefined) {
         nodeIndex[current.call] = nodes.length;
-        nodes[nodes.length - 1].latest = false;
         nodes.push({
           "call":current.call,
           "count":1,
-          "latest":true
         })
       } else {
         nodes[nodeIndex[current.call]].count += 1;
@@ -148,7 +146,7 @@
         nodeIndex["START"] = nodes.length;
         nodes.push({
           "call":"START",
-          "count":1
+          "count":1,
         })
 
         linkIndex[["START",current.call]] = links.length;
@@ -197,8 +195,11 @@
         return "#" + colorHash(d.call);
       })
       .attr('stroke', function(d,i) {
-        if (d.latest) return 'red';
-        else return 'none';
+        if (d.call == lastCall.call) {
+          return 'red';
+        } else {
+          return 'none';
+        }
       })
       .call(force.drag);
 
