@@ -165,7 +165,7 @@
     link = link.data(force.links(), function(d) { return d.source.call + "-" + d.target.call; });
     node = node.data(force.nodes(), function(d) { return d.call;});
     //selfRef = selfRef.data(force.nodes(), function(d) { return d.id;});
-    //label = label.data(force.nodes(), function(d) { return d.id;});
+    label = label.data(force.nodes(), function(d) { return d.call;});
 
     link.enter().append('line')
       .attr('class','link')
@@ -202,6 +202,12 @@
       .attr('fill','none')
       .attr("stroke-dasharray", "5, 10");
 */
+    label.enter().append('text')
+      .attr('class','node')
+      .text(function(d) {
+        return d.call;
+      });
+
     function manPageLinker(d) {
       if (d.name == "START" | d.name == "END" | d.name == "") {
         return;
@@ -214,13 +220,7 @@
       .on('dblclick', function(d) {
         manPageLinker(d);
       })
-
-    /*label.enter().append('text')
-      .attr('class','node')
-      .text(function(d) {
-        return d.call;
-        });
-    */
+    
   } 
 
   var thetick = 0;
@@ -250,11 +250,11 @@
       .attr("transform", function(d) {
         return "translate(" + (d.x + scale.radius(d.count) * 0.7) + "," + (d.y - scale.radius(d.count) * 0.7) + ")";
       });
-
+*/
     label
       .attr('x', function(d) { return d.x; })
       .attr('y', function(d) { return d.y + scale.radius(d.count) + 10; });
- */     
+     
  }
 
  function processData() {
