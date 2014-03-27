@@ -194,13 +194,6 @@
       .attr("fill", function(d,i) {
         return "#" + colorHash(d.call);
       })
-      .attr('stroke', function(d,i) {
-        if (d.call == lastCall.call) {
-          return 'red';
-        } else {
-          return 'none';
-        }
-      })
       .call(force.drag);
 
     label.enter().append('text')
@@ -263,6 +256,13 @@
         })
       .attr("cy", function(d) {
         return d.y;
+      })
+      .attr('stroke', function(d,i) {
+        if (d.call == lastCall.call) {
+          return 'red';
+        } else {
+          return 'none';
+        }
       });
 /*
     selfRef
