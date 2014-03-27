@@ -126,8 +126,8 @@
         if (linkIndex[linkKey] == undefined) {
           linkIndex[linkKey] = links.length;
           links.push({
-            "source":nodeIndex[lastCall.call],
-            "target":nodeIndex[current.call],
+            "source":nodes[nodeIndex[lastCall.call]],
+            "target":nodes[nodeIndex[current.call]],
             "count":1
           }); 
         } else {
@@ -142,8 +142,8 @@
 
         linkIndex[["START",current.call]] = links.length;
         links.push({
-          "source":nodeIndex["START"],
-          "target":nodeIndex[current.call],
+          "source":nodes[nodeIndex["START"]],
+          "target":nodes[nodeIndex[current.call]],
           "count":1
         }); 
       }
@@ -185,6 +185,12 @@
         return scale.color(d.index);
       })
       .call(force.drag);
+
+    label.enter().append('text')
+      .attr('class','label')
+      .text(function(d) {
+        return d.call;
+      });
 /*
     selfRef.enter().append('circle')
       .style('display', function(d) {
@@ -202,11 +208,6 @@
       .attr('fill','none')
       .attr("stroke-dasharray", "5, 10");
 */
-    label.enter().append('text')
-      .attr('class','label')
-      .text(function(d) {
-        return d.call;
-      });
 
     function manPageLinker(d) {
       if (d.name == "START" | d.name == "END" | d.name == "") {
@@ -240,12 +241,13 @@
       .attr("x2", function(d) { return d.target.x; })
       .attr("y2", function(d) { return d.target.y; });
 
-    node.attr("cx", function(d) {
-      return d.x;
-      })
-    .attr("cy", function(d) {
-      return d.y;
-    });
+    node
+      .attr("cx", function(d) {
+        return d.x;
+        })
+      .attr("cy", function(d) {
+        return d.y;
+      });
 /*
     selfRef
       .attr("transform", function(d) {
@@ -255,7 +257,6 @@
     label
       .attr('x', function(d) { return d.x; })
       .attr('y', function(d) { return d.y + scale.radius(d.count) + 10; });
-     
  }
 
  function processData() {
