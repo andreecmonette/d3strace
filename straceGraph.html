@@ -8,7 +8,7 @@
     stroke-opacity: .5;
   }
 
-  .node {
+  .label {
     font-family:Arial;
     font-size:8pt;
     font-weight:bold;
@@ -123,7 +123,7 @@
       if (lastCall != "START") {
         var linkKey = [lastCall.call,current.call];
 
-        if (links[linkKey] == undefined) {
+        if (linkIndex[linkKey] == undefined) {
           linkIndex[linkKey] = links.length;
           links.push({
             "source":nodeIndex[lastCall.call],
