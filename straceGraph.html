@@ -138,7 +138,8 @@
         nodeIndex["START"] = nodes.length;
         nodes.push({
           "call":"START",
-          "count":1
+          "count":1,
+          "color":nodeIndex[current.call]
         })
 
         linkIndex[["START",current.call]] = links.length;
@@ -177,7 +178,8 @@
       })
       .attr("stroke-dasharray", "5, 10");
 
-    node.enter().append('circle').attr("class", "node")
+    node.enter().append('circle')
+      .attr("class", "node")
       .attr("r", function(d) {
         return d.count ? scale.radius(d.count) : 0;
       })
@@ -219,8 +221,9 @@
     node
       .on('dblclick', function(d) {
         manPageLinker(d);
-      })
+      });
     
+    force.start();
   } 
 
   var thetick = 0;
@@ -265,7 +268,6 @@
       
       render();
       qIndex ++;
-      force.start();
     }
   }
 
