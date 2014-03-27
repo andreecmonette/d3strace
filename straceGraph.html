@@ -30,8 +30,8 @@
       .attr('type','text');
     var submit = topBar.append('button')
       .style('position','absolute');
-  var svg = b.append('svg')
-    .style('position','absolute');
+   var svg = b.append('svg')
+ //   .style('position','absolute');
 
   var w = window.innerWidth;
   var h = window.innerHeight;
@@ -60,10 +60,9 @@
     .style('height',h-50)
     .style('top',50)
     .style('left',0)
-    .style('background','yellow');
 
-  var force;
-  var scales = {
+  var force = d3.layout.force();
+  var scale = {
     radius:null,
     stroke_link:null,
     stroke_self:null,
@@ -119,8 +118,8 @@
         if (links[linkKey] == undefined) {
           linkIndex[linkKey] = links.length;
           links.push({
-            "source":index[lastCall.call],
-            "target":index[current.call],
+            "source":nodeIndex[lastCall.call],
+            "target":nodeIndex[current.call],
             "count":1
           }); 
         } else {
@@ -135,8 +134,8 @@
 
         linkIndex[["START",current.call]] = links.length;
         links.push({
-          "source":index["START"],
-          "target":index[current.call],
+          "source":nodeIndex["START"],
+          "target":nodeIndex[current.call],
           "count":1
         }); 
       }
@@ -153,18 +152,11 @@
   }
 
   function render() {
-    force
-      .nodes(nodes)
-      .links(links)
-      .linkDistance(150)
-      .charge(function(d,i) {
-        return d.charge;
-      })
-      .start();
+  
 
     link = svg.selectAll(".link")
-      .data(links)
-      .enter().append("line")
+      .data(links);
+    link.enter().append("line")
       .attr('class','link')
       .style('stroke', function(d,i) {
         return scale.color(d.source.color);
@@ -175,8 +167,8 @@
       .attr("stroke-dasharray", "5, 10");
 
     node = svg.selectAll(".node")
-      .data(nodes)
-      .enter().append("circle")
+      .data(nodes);
+    node.enter().append("circle")
       .attr("r", function(d) {
         return d.count ? scale.radius(d.count) : 0;
       })
@@ -195,7 +187,7 @@
         return d.count ? scale.radius(d.count) : 0;
       })
       .attr('stroke', function(d) {
-        return nodeColor(d.color);
+        return scale.color(d.color);
       })
       .attr('stroke-width', function(d) {
         return scale.stroke_self(d.selfRefCount);
@@ -224,6 +216,26 @@
         return d.call;
       });
 
+    
+    var thetick = 0;
+    function animator(){
+      thetick -= .1;
+      thetick = thetick % 10000;
+      link.attr("stroke-dashoffset", thetick.toString() + "%");
+      selfRef.attr("stroke-dashoffset", thetick.toString() + "%");
+    }
+
+    window.setInterval(animator, 66);
+  } 
+  force
+      .nodes(nodes)
+      .links(links)
+      .linkDistance(150)
+      .charge(function(d,i) {
+        return d.charge;
+      })
+      .start();
+ 
     force.on("tick", function() {
       link.attr("x1", function(d) { return d.source.x; })
         .attr("y1", function(d) { return d.source.y; })
@@ -242,28 +254,17 @@
       label
         .attr('x', function(d) { return d.x; })
         .attr('y', function(d) { return d.y + scale.radius(d.count) + 10; });
-    })
-
-    var thetick = 0;
-    function animator(){
-      thetick -= .1;
-      thetick = thetick % 10000;
-      link.attr("stroke-dashoffset", thetick.toString() + "%");
-      selfRef.attr("stroke-dashoffset", thetick.toString() + "%");
-    }
-
-    window.setInterval(animator, 66);
-  }
-
-  function processData() {
+    });
+ function processData() {
     if (q[qIndex] != undefined) {
       var data = q[qIndex];
       parseData(data);
       init();
+      
       render();
-
       qIndex ++;
     }
+
   }
 
   window.setInterval(processData,200);
