@@ -28,8 +28,6 @@
   var linkIndex = {};
   var lastCall = "START";
 
-
-  
   //ui
   var b = d3.select(document.body);
   var topBar = b.append('div')
@@ -45,7 +43,6 @@
   var node = svg.selectAll(".node");
   var selfRef = svg.selectAll(".selfLink");
   var label = svg.selectAll(".label");
-
 
   var w = window.innerWidth;
   var h = window.innerHeight;
@@ -118,6 +115,7 @@
         nodes.push({
           "call":current.call,
           "count":1,
+          "color":nodeIndex[current.call]
         })
       } else {
         nodes[nodeIndex[current.call]].count += 1;
