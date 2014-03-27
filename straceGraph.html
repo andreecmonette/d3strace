@@ -80,6 +80,9 @@
     .style('height',h-50)
     .style('top',50)
     .style('left',0)
+    .on('mousedown', function() {
+      d3.event.preventDefault();
+    });
 
   var force = d3.layout.force()
     .size([w, h - 50])
@@ -188,12 +191,15 @@
 
     node.enter().append('circle')
       .attr("class", "node")
+      .transition()
       .attr("r", function(d) {
         return d.count ? scale.radius(d.count) : 0;
       })
       .attr("fill", function(d,i) {
         return "#" + colorHash(d.call);
-      })
+      });
+    
+    node
       .call(force.drag);
 
     label.enter().append('text')
