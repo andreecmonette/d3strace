@@ -114,8 +114,7 @@
         nodeIndex[current.call] = nodes.length;
         nodes.push({
           "call":current.call,
-          "count":1,
-          "color":nodeIndex[current.call]
+          "count":1
         })
       } else {
         nodes[nodeIndex[current.call]].count += 1;
@@ -138,8 +137,7 @@
         nodeIndex["START"] = nodes.length;
         nodes.push({
           "call":"START",
-          "count":1,
-          "color":nodeIndex[current.call]
+          "count":1
         })
 
         linkIndex[["START",current.call]] = links.length;
@@ -184,7 +182,7 @@
         return d.count ? scale.radius(d.count) : 0;
       })
       .style("fill", function(d,i) {
-        return scale.color(d.color);
+        return scale.color(d.index);
       })
       .call(force.drag);
 /*
@@ -205,7 +203,7 @@
       .attr("stroke-dasharray", "5, 10");
 */
     label.enter().append('text')
-      .attr('class','node')
+      .attr('class','label')
       .text(function(d) {
         return d.call;
       });
