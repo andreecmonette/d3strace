@@ -121,9 +121,11 @@
 
       if (nodeIndex[current.call] == undefined) {
         nodeIndex[current.call] = nodes.length;
+        nodes[nodes.length - 1].latest = false;
         nodes.push({
           "call":current.call,
-          "count":1
+          "count":1,
+          "latest":true
         })
       } else {
         nodes[nodeIndex[current.call]].count += 1;
@@ -169,7 +171,6 @@
   }
 
   function render() {
-    
     force.start();
     //console.log(force.links());
     link = link.data(force.links(), function(d) { return d.source.call + "-" + d.target.call; });
@@ -177,7 +178,7 @@
     //selfRef = selfRef.data(force.nodes(), function(d) { return d.id;});
     label = label.data(force.nodes(), function(d) { return d.call;});
 
-    link.enter().append('line')
+    link.enter().insert('line', '.node')
       .attr('class','link')
       .style('stroke', function(d,i) {
         return scale.color(d.source.color);
@@ -192,8 +193,12 @@
       .attr("r", function(d) {
         return d.count ? scale.radius(d.count) : 0;
       })
-    .attr("fill", function(d,i) {
+      .attr("fill", function(d,i) {
         return "#" + colorHash(d.call);
+      })
+      .attr('stroke', function(d,i) {
+        if (d.latest) return 'red';
+        else return 'none';
       })
       .call(force.drag);
 
