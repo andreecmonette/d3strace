@@ -181,7 +181,7 @@
       .attr("r", function(d) {
         return d.count ? scale.radius(d.count) : 0;
       })
-      .style("fill", function(d,i) {
+      .attr("fill", function(d,i) {
         return scale.color(d.index);
       })
       .call(force.drag);
