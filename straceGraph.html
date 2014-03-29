@@ -1,6 +1,8 @@
 <html>
 <head>
-<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+  <!-- <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script> -->
+  <script src="/d3.v3.min.js" charset = "utf-8"></script>
+  <!-- For local testing --> 
 <script src="/socket.io/socket.io.js"></script>
 <style>
   .link {
@@ -46,6 +48,8 @@
       .attr('type','text');
   var submit = topBar.append('button')
       .style('position','absolute');
+  var terminal = b.append('div')
+      .style('position','absolute');
   var svg = b.append('svg')
       .style('position','absolute');
   var link = svg.selectAll(".link");
@@ -64,7 +68,7 @@
     .style('left',0);
 
   inputProcess
-    .style('width',100)
+    .style('width',160)
     .style('top',10)
     .style('left',20);
 
@@ -72,14 +76,21 @@
     .style('width',60)
     .style('height',22)
     .style('top',10)
-    .style('left',130)
+    .style('left',190)
     .text('submit');
-
+  
+  terminal
+    .style('width', 180)
+    .style('height', h-50)
+    .style('top', 50)
+    .style('left', 0)
+    .style('font-family', 'monospace');
+  
   svg
-    .style('width',w)
+    .style('width',w-180)
     .style('height',h-50)
     .style('top',50)
-    .style('left',0)
+    .style('left',180)
     .on('mousedown', function() {
       d3.event.preventDefault();
       });
@@ -92,7 +103,7 @@
     .style('stroke', 'black')
     .attr('fill', 'none');
   var force = d3.layout.force()
-    .size([w, h - 50])
+    .size([w-180, h - 50])
     .nodes(nodes)
     .links(links)
     .linkDistance(150)
@@ -112,6 +123,19 @@
   var socket = io.connect('/');
   var q = {};
   var qIndex = 0;
+  var stdOut = "";
+
+  socket.on('stdOutData', function(data) {
+    console.log(data);  
+    var i = data.index;
+    var content = data.content;
+    // for now
+    stdOut = stdOut + content;
+    //console.log(stdOut);
+    //console.log(stdOut.split('\n').slice(stdOut.length - 20,stdOut.length));
+    //terminal.text(stdOut.split('\n').slice(stdOut.length - 20,stdOut.length));
+    terminal.text(stdOut);
+  });
 
   socket.on('sysCalls', function(data) {
     var i = data.index;

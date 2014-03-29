@@ -6,16 +6,31 @@ var app = require('http').createServer(handler)
 app.listen(3000);
 
 function handler (req, res) {
+  // For local testing:
+  if (req.url == "/d3.v3.min.js") {
+  fs.readFile(__dirname + "/d3.min.js",
+  function (err, data) {
+    if (err) {
+      res.writeHead(500);
+      return res.end('console.log("Error loading D3");');
+      }
+    res.writeHead(200, {'Content-Type': 'text/javascript'});
+    res.end(data);
+  });
+  } else {
+  
+  
   fs.readFile(__dirname + "/straceGraph.html",
   function (err, data) {
     if (err) {
       res.writeHead(500);
-      return res.end('Error loading index.html');
+      return res.end('Error loading graph');
     }
-
+    
     res.writeHead(200);
     res.end(data);
   });
+   }
 }
 
 io.sockets.on('connection', function (socket) {
@@ -27,6 +42,18 @@ io.sockets.on('connection', function (socket) {
 
     var echoProc = child_process.spawn("strace", spawnProc);
     var lastLine = "";
+
+
+    var stdOutIndex = 0;
+
+    echoProc.stdout.on('data', function (chunk) {
+      socket.emit('stdOutData', {index: stdOutIndex++, content: chunk.toString()});
+    });
+
+    
+
+
+
 
     echoProc.stderr.on('data', function (chunk) {
       
