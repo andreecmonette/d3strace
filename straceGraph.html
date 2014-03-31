@@ -10,7 +10,7 @@
 
   .label {
     font-family:Arial;
-    font-size:8pt;
+    font-size:10pt;
     font-weight:bold;
     text-anchor:middle;
     stroke:white;
@@ -20,6 +20,10 @@
   .call {
     font-family:Arial;
     font-size:14pt;
+  }
+
+  textarea {
+    font-size:12pt;
   }
 
 </style>
@@ -38,8 +42,7 @@
       q[i] = content;
     })
     .on('stdout', function(data) {
-      console.log('stdout');
-      display.node().value = display.node().value + data.content;
+      csPrint(data.content.join('\n'))
     });
 
   //ui
@@ -60,15 +63,15 @@
     var cons = leftPanel.append('div');
       var display = cons.append('textarea')
         .attr('readonly','readonly')
-        .on('click', function() {
-          d3.event.preventDefault();
-        })
         .style('position','absolute')
-        .style('top',50)
+        .style('top',10)
         .style('left',10)
         .style('width', parseInt(leftPanel.style('width')) - 20)
-        .style('height', parseInt(leftPanel.style('height')) - 100)
-        .style('background','#F5F5F5');
+        .style('height', parseInt(leftPanel.style('height')) - 60)
+        .style('background','#F5F5F5')
+        .style('resize','none')
+        .style('outline','none');
+
       var input = leftPanel.append('input')
         .attr('type','text')
         .style('position','absolute')
@@ -76,18 +79,83 @@
         .style('left',10)
         .style('height',20)
         .style('border',0)
+        .style('outline','none')
         .style('width', parseInt(leftPanel.style('width')) - 20)
         .on('keydown', function() {
           if (d3.event.keyCode == 13) {
-            display.node().value += '>' + this.value + "\n";
-            socket.emit('strace', { val: this.value });
+            csPrint('>' + this.value)
+            if (this.value[0] == "\\") {
+              var args = this.value.substring(1,this.value.length).split(' ');
+              if (commands[args[0]] != undefined) {
+                commands[args[0]](args);
+              } else {
+                csPrint('!! command does not exist !!')
+              }
+            } else {
+              socket.emit('strace', { val: this.value });
+            }
             this.value = '';
           }
         });
 
-  //stats
-  var stat = leftPanel.append('div');
-    var grid;
+  //console commands
+  var commands = {
+    'clearGraph':function() {
+      nodeIndex = {};
+      linkIndex = {};
+      lastCall = 'START';
+      force
+        .stop()
+        .nodes([])
+        .links([]);
+
+      render();
+    },
+    'clearConsole': function() {
+      display.node().value = '';
+    },
+    'clear':function() {
+      this.clearGraph();
+      this.clearConsole();
+    },
+    'node':function(args) {
+      var name = args[1];
+      if (nodeIndex[name] != undefined) {
+        var out = '';
+        out += name + '\ncount: ' + nodeIndex[name].count + "\n";
+        for (var i = 0 ; i < force.links().length ; i ++ ) {
+          var l = force.links()[i];
+          if (l.source.call == name) {
+            out += 'link to "' + l.target.call + '" count: ' + l.count + "\n";
+          }
+        }
+        csPrint(out);
+      } else {
+        csPrint('!! no node named: ' + name + ' found !!');
+      }
+    },
+    'startPos':function(args) {
+      if (args[1] == "center") {
+        startPos = [(w - panelWidth) / 2, h / 2];
+      } else {
+        startPos = [parseInt(args[1]), parseInt(args[2])];
+      }
+      
+      force.resume();
+    },
+    'endPos':function(args) {
+      if (args[1] == "center") {
+        endPos = [(w - panelWidth) / 2, h / 2];
+      } else {
+        endPos = [parseInt(args[1]), parseInt(args[2])];
+      }
+      render();
+      force.resume();
+    },
+    'stop':function() {
+      socket.emit('stop',{});
+    }
+  };
 
   //d3
   var svg = b.append('svg')
@@ -103,18 +171,19 @@
   var node = svg.selectAll(".node");
   var label = svg.selectAll(".label");
 
-  var links = [];
-  var nodes = [];
   var nodeIndex = {};
   var linkIndex = {};
   var lastCall = "START";
+
+  var startPos = [100,100];
+  var endPos = [w - panelWidth - 75, h - 75];
 
   var squareSize = 50;
   var square = svg.append("rect")
     .attr('width', squareSize)
     .attr('height', squareSize)
-    .attr('x', (w - panelWidth - squareSize)/2)
-    .attr('y', (h - squareSize)/2)
+    .attr('x', (endPos[0] - squareSize))
+    .attr('y', (endPos[1] - squareSize))
     .style('stroke', '#474747')
     .style('stroke-width',2)
     .attr('fill', 'none')
@@ -122,12 +191,10 @@
 
   var force = d3.layout.force()
     .size([w, h - 50])
-    .nodes(nodes)
-    .links(links)
+    .nodes([])
+    .links([])
     .linkDistance(150)
-    .charge(function(d,i) {
-      return -700; 
-    })
+    .charge(-600)
     .on('tick', tick);
 
   var scale = {
@@ -149,7 +216,7 @@
         };
 
         nodeIndex[current.call] = item;
-        nodes.push(item);
+        force.nodes().push(item);
 
       } else {
         nodeIndex[current.call].count += 1;
@@ -166,7 +233,7 @@
           };
 
           linkIndex[linkKey] = item;
-          links.push(item); 
+          force.links().push(item); 
         } else {
           linkIndex[linkKey].count += 1;
         }
@@ -183,25 +250,30 @@
         };
 
         nodeIndex["START"] = startNode;
-        nodes.push(startNode)
+        force.nodes().push(startNode)
 
         linkIndex[["START",current.call]] = item;
-        links.push(item); 
+        force.links().push(item); 
       }
 
       lastCall = current;
     }
+
+    force.start();
   }
 
   function init() {
-    scale.radius = d3.scale.linear().domain([1,d3.max(nodes,function(d) { return d.count; })]).range([8,30]);
-    scale.stroke = d3.scale.linear().domain([1,d3.max(links,function(d) { return d.count; })]).range([2,20]);
-    scale.stroke_self = d3.scale.log().domain([1,d3.max(links,function(d) { return d.count; })]).range([2,10]);
+    scale.radius = d3.scale.linear().domain([1,d3.max(force.nodes(),function(d) { return d.count; })]).range([8,30]);
+    scale.stroke = d3.scale.linear().domain([1,d3.max(force.links(),function(d) { return d.count; })]).range([2,20]);
+    scale.stroke_self = d3.scale.log().domain([1,d3.max(force.links(),function(d) { return d.count; })]).range([2,10]);
     scale.color = d3.scale.category20();
   }
 
   function render() {
-    force.start();
+    square
+      .attr('x', (endPos[0] - squareSize / 2))
+      .attr('y', (endPos[1] - squareSize / 2))
+
     link = link.data(force.links(), function(d) { return d.source.call + "-" + d.target.call; });
     node = node.data(force.nodes(), function(d) { return d.call;});
     label = label.data(force.nodes(), function(d) { return d.call;});
@@ -209,7 +281,7 @@
     link.enter().insert('line', '.node')
       .attr('class','link')
       .style('stroke', function(d,i) {
-        return "#" + colorHash(d.source.call);
+        return colorHash(d.source.call);
       })
       .style("stroke-width", function(d,i) {
         return scale.stroke(d.count);
@@ -222,7 +294,7 @@
         return d.count ? scale.radius(d.count) : 0;
       })
       .attr("fill", function(d,i) {
-        return "#" + colorHash(d.call);
+        return colorHash(d.call);
       })
       .on('dblclick', function(d) {
         manPageLinker(d);
@@ -239,6 +311,10 @@
       .on('dblclick', function(d) {
           manPageLinker(d);
        });
+
+    node.exit().remove();
+    link.exit().remove();
+    label.exit().remove();
   } 
 
   function tick() {
@@ -256,8 +332,10 @@
       })
       .attr('stroke', function(d,i) {
         if (d.call == lastCall.call) {
-          d.x += ((w - panelWidth)/2 - d.x) * 0.1
-          d.y += (h/2 - d.y) * 0.1
+          //d.x += ((w - panelWidth)/2 - d.x) * 0.1
+          //d.y += (h/2 - d.y) * 0.1
+          d.x += (endPos[0] - d.x) * 0.1
+          d.y += (endPos[1] - d.y) * 0.1
           return '#A12A2A';
         } else {
           return 'none';
@@ -269,37 +347,43 @@
         } else {
           return 0;
         }
+      })
+      .each(function(d,i) {
+        if (d.call == 'START') {
+          d.x += (startPos[0] - d.x) * 0.1;
+          d.y += (startPos[1] - d.y) * 0.1;
+        }
       });
 
     label
       .attr('x', function(d) { return d.x; })
-      .attr('y', function(d) { return d.y + scale.radius(d.count) + 10; });
+      .attr('y', function(d) { return d.y + scale.radius(d.count) + 15; });
  }
 
   //util
-  var LARGEPRIME = 32452843;
-  function colorHash(str) {
-   k = 1;
-   for (chr in str) {
-     k *= str.charCodeAt(chr);
-   } 
-     k = k % LARGEPRIME;
-     return (k % 0xffffff).toString(16);
-   }
+ function colorHash(str) {
+      // str to hash
+    for (var i = 0, hash = 0; i < str.length; hash = str.charCodeAt(i++) + ((hash << 5) - hash));
 
-   function manPageLinker(d) {
-      if (d.call == "START" | d.call == "END" | d.call == "") {
-        return;
-        } else {
-        window.open('http://man7.org/linux/man-pages/man2/' + d.call + '.2.html', '_blank');
-      }
-    }  
+      // int/hash to hex
+    for (var i = 0, colour = "#"; i < 3; colour += ("00" + ((hash >> i++ * 8) & 0xFF).toString(16)).slice(-2));
 
-  var DASHTICK = 0;
+    return colour;
+  }
+
+ function manPageLinker(d) {
+    if (d.call == "START" | d.call == "END" | d.call == "") {
+      return;
+      } else {
+      window.open('http://man7.org/linux/man-pages/man2/' + d.call + '.2.html', '_blank');
+    }
+  }  
+
+  var dashTick = 0;
   function animator(){
-    DASHTICK -= .1;
-    DASHTICK = DASHTICK % 10000;
-    link.attr("stroke-dashoffset", DASHTICK.toString() + "%");
+    dashTick -= .1;
+    dashTick = dashTick % 10000;
+    link.attr("stroke-dashoffset", dashTick.toString() + "%");
   }  
 
   function processData() {
@@ -312,10 +396,14 @@
     }
   }
 
+  function csPrint(str) {
+    display.node().value += str.trim() + "\n\n";
+    display.node().scrollTop = display.node().scrollHeight;
+  }
+
   //main
   window.setInterval(animator, 66);
   window.setInterval(processData,200);
-
 </script>
 </body>
  
