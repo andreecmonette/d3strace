@@ -34,53 +34,59 @@ function handler (req, res) {
 }
 
 io.sockets.on('connection', function (socket) {
+  
+  
+  var activeProcess = null;
+  
   socket.on('strace', function(data) {
-    var index = 0;
-    var call = data.val;
-    var spawnProc = call.split(" ");
-    spawnProc.unshift("-ttt");
-
-    var echoProc = child_process.spawn("strace", spawnProc);
-    var lastLine = "";
-
-
-    var stdOutIndex = 0;
-
-    echoProc.stdout.on('data', function (chunk) {
-      socket.emit('stdOutData', {index: stdOutIndex++, content: chunk.toString()});
-    });
-
     
 
 
+    if (activeProcess === null) {
+      var index = 0;
+      var call = data.val;
+      var spawnProc = call.split(" ");
+      spawnProc.unshift("-ttt");
 
+      var echoProc = child_process.spawn("strace", spawnProc);
+      var lastLine = "";
+       
+      
 
-    echoProc.stderr.on('data', function (chunk) {
-      
-      var sysCalls = [];
-      var lines = chunk.toString().split("\n");
-      lines[0] = lastLine + lines[0];
-      lastLine = lines.pop();
-      
-      for (line in lines) {
-        var matchArray = lines[line].match(/^(\S+?) (\S+?)\((.*?)\) +\= (.*)$/)
-        if (matchArray) {
-        sysCalls.push({
-          
-          time : matchArray[1],
-          call : matchArray[2],
-          args : matchArray[3].split(", "),
-          retVal : matchArray[4]
-        });
-        } else {
-          // errors
-          //sysCalls.push({
-          //  call : lines[line]
-          //});
+      var stdOutIndex = 0;
+
+      echoProc.stdout.on('data', function (chunk) {
+        socket.emit('stdOutData', {index: stdOutIndex++, content: chunk.toString()})});
+      echoProc.stderr.on('data', function (chunk) {
+        
+        var sysCalls = [];
+        var lines = chunk.toString().split("\n");
+        lines[0] = lastLine + lines[0];
+        lastLine = lines.pop();
+        
+        for (line in lines) {
+          var matchArray = lines[line].match(/^(\S+?) (\S+?)\((.*?)\) +\= (.*)$/)
+          if (matchArray) {
+          sysCalls.push({
+            
+            time : matchArray[1],
+            call : matchArray[2],
+            args : matchArray[3].split(", "),
+            retVal : matchArray[4]
+          });
+          } else {
+            // errors
+            //sysCalls.push({
+            //  call : lines[line]
+            //});
+          }
         }
-      }
-      socket.emit('sysCalls', {index:index++, content:sysCalls});
-    });
-  
-  })
+        socket.emit('sysCalls', {index:index++, content:sysCalls});
+      });
+    }
+  });
+
+
+
+
 });
