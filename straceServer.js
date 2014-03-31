@@ -1,54 +1,5 @@
-/*
-var child_process = require('child_process');
-var readline = require('readline');
-
-var rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-  stderr: process.stderr
-});
-
-rl.question("strace ", function(answer) {
-  var spawnProc = answer.split(" ");
-  spawnProc.unshift("-ttt");
-  var echoProc = child_process.spawn("strace", spawnProc);
-  var lastLine = "";
-  echoProc.stderr.on('data', function (chunk) {
-    var lines = chunk.toString().split("\n");
-    lines[0] = lastLine + lines[0];
-    lastLine = lines.pop();
-    
-    for (line in lines) {
-      var matchArray = lines[line].match(/(\S+?) (\S+?)\((.*?)\) +\= (.*)$/)
-      if (matchArray) {
-      sysCalls.push({
-        
-        time : matchArray[1],
-        call : matchArray[2],
-        args : matchArray[3].split(", "),
-        retVal : matchArray[4]
-      });
-      } else {
-        sysCalls.push({
-          call : lines[line]
-        });
-      }
-    }
-   
-
-    
-  console.log(sysCalls);
-  });
-  rl.close();
-
-});
-*/
-
-
-
-
 var app = require('http').createServer(handler)
-  , io = require('socket.io').listen(app, {log : false})
+  , io = require('socket.io').listen(app)
   , fs = require('fs')
   , child_process = require('child_process');
 
@@ -69,40 +20,34 @@ function handler (req, res) {
 }
 
 io.sockets.on('connection', function (socket) {
+  var index = 0;
   socket.on('strace', function(data) {
-    var index = 0;
     var call = data.val;
     var spawnProc = call.split(" ");
-    spawnProc.unshift("-ttt");
+    spawnProc.unshift("dtruss");
 
-    var echoProc = child_process.spawn("strace", spawnProc);
+    console.log(spawnProc)
+    var echoProc = child_process.spawn("sudo", spawnProc);
     var lastLine = "";
 
     echoProc.stderr.on('data', function (chunk) {
-      
       var sysCalls = [];
       var lines = chunk.toString().split("\n");
+      lines.pop();
       lines[0] = lastLine + lines[0];
       lastLine = lines.pop();
       
       for (line in lines) {
-        var matchArray = lines[line].match(/^(\S+?) (\S+?)\((.*?)\) +\= (.*)$/)
-        if (matchArray) {
+        var call = lines[line].split('(')[0];
         sysCalls.push({
-          
-          time : matchArray[1],
-          call : matchArray[2],
-          args : matchArray[3].split(", "),
-          retVal : matchArray[4]
+          call: call
         });
-        } else {
-          //sysCalls.push({
-          //  call : lines[line]
-          //});
-        }
       }
       socket.emit('sysCalls', {index:index++, content:sysCalls});
     });
-  
+
+    echoProc.stdout.on('data', function(chunk) {
+      socket.emit('stdout', {content:chunk.toString().split('\n')})
+    })
   })
 });

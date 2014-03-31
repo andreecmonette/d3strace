@@ -17,80 +17,109 @@
     stroke-width:0.4px;
   }
 
+  .call {
+    font-family:Arial;
+    font-size:14pt;
+  }
+
 </style>
 </head>
 <body>
 <script type="text/javascript">
-  ///core functions
+  //socket.io
+  var socket = io.connect('/');
+  var q = {};
+  var qIndex = 0;
+
+  socket
+    .on('sysCalls', function(data) {
+      var i = data.index;
+      var content = data.content;
+      q[i] = content;
+    })
+    .on('stdout', function(data) {
+      console.log('stdout');
+      display.node().value = display.node().value + data.content;
+    });
+
+  //ui
+  var b = d3.select(document.body);
+  var w = window.innerWidth;
+  var h = window.innerHeight;
+
+  var panelWidth = 300;
+
+  var leftPanel = b.append('div')
+    .style('position','absolute')
+    .style('width',panelWidth)
+    .style('height',h)
+    .style('top',0)
+    .style('left',0)
+    .style('background','#D9D9D9');
+
+    var cons = leftPanel.append('div');
+      var display = cons.append('textarea')
+        .attr('readonly','readonly')
+        .on('click', function() {
+          d3.event.preventDefault();
+        })
+        .style('position','absolute')
+        .style('top',50)
+        .style('left',10)
+        .style('width', parseInt(leftPanel.style('width')) - 20)
+        .style('height', parseInt(leftPanel.style('height')) - 100)
+        .style('background','#F5F5F5');
+      var input = leftPanel.append('input')
+        .attr('type','text')
+        .style('position','absolute')
+        .style('top', parseInt(leftPanel.style('height')) - 40)
+        .style('left',10)
+        .style('height',20)
+        .style('border',0)
+        .style('width', parseInt(leftPanel.style('width')) - 20)
+        .on('keydown', function() {
+          if (d3.event.keyCode == 13) {
+            display.node().value += '>' + this.value + "\n";
+            socket.emit('strace', { val: this.value });
+            this.value = '';
+          }
+        });
+
+  //stats
+  var stat = leftPanel.append('div');
+    var grid;
+
+  //d3
+  var svg = b.append('svg')
+    .style('position','absolute')
+    .style('width',w - panelWidth)
+    .style('height',h)
+    .style('top',0)
+    .style('left',panelWidth)
+    .on('mousedown', function() {
+      d3.event.preventDefault();
+    });
+  var link = svg.selectAll(".link");
+  var node = svg.selectAll(".node");
+  var label = svg.selectAll(".label");
+
   var links = [];
   var nodes = [];
   var nodeIndex = {};
   var linkIndex = {};
   var lastCall = "START";
-  var LARGEPRIME = 32452843;
-  function colorHash(str) {
-   k = 1;
-   for (chr in str) {
-     k *= str.charCodeAt(chr);
-   } 
-     k = k % LARGEPRIME;
-     return (k % 0xffffff).toString(16);
-   }
 
-  //ui
-  var b = d3.select(document.body);
-  var topBar = b.append('div')
-    .style('position','absolute');
-  var inputProcess = topBar.append('input')
-      .style('position','absolute')
-      .attr('type','text');
-  var submit = topBar.append('button')
-      .style('position','absolute');
-  var svg = b.append('svg')
-      .style('position','absolute');
-  var link = svg.selectAll(".link");
-  var node = svg.selectAll(".node");
-  var selfRef = svg.selectAll(".selfLink");
-  var label = svg.selectAll(".label");
-
-  var w = window.innerWidth;
-  var h = window.innerHeight;
-
-  topBar
-    .style('width',w)
-    .style('height',45)
-    .style('background','black')
-    .style('top',0)
-    .style('left',0);
-
-  inputProcess
-    .style('width',100)
-    .style('top',10)
-    .style('left',20);
-
-  submit
-    .style('width',60)
-    .style('height',22)
-    .style('top',10)
-    .style('left',130)
-    .text('submit');
-
-  svg
-    .style('width',w)
-    .style('height',h-50)
-    .style('top',50)
-    .style('left',0)
-    .on('mousedown', function() {
-      d3.event.preventDefault();
-      });
   var squareSize = 50;
   var square = svg.append("rect")
     .attr('width', squareSize)
     .attr('height', squareSize)
-    .attr('x', (w - squareSize)/2)
+    .attr('x', (w - panelWidth - squareSize)/2)
     .attr('y', (h - squareSize)/2)
-    .style('stroke', 'black')
-    .attr('fill', 'none');
+    .style('stroke', '#474747')
+    .style('stroke-width',2)
+    .attr('fill', 'none')
+    .attr('class','square');
+
   var force = d3.layout.force()
     .size([w, h - 50])
     .nodes(nodes)
@@ -108,63 +137,56 @@
     color:null,
   };
 
-  //socket.io
-  var socket = io.connect('/');
-  var q = {};
-  var qIndex = 0;
-
-  socket.on('sysCalls', function(data) {
-    var i = data.index;
-    var content = data.content;
-    q[i] = content;
-  });
-
-  submit
-    .on('click', function() {
-      socket.emit('strace', { val: inputProcess.node().value });
-    });
-
   function parseData(d) {
     //parse
     for (var i = 0 ; i < d.length ; i ++ ) {
       var current = d[i];
 
       if (nodeIndex[current.call] == undefined) {
-        nodeIndex[current.call] = nodes.length;
-        nodes.push({
+        var item = {
           "call":current.call,
           "count":1,
-        })
+        };
+
+        nodeIndex[current.call] = item;
+        nodes.push(item);
+
       } else {
-        nodes[nodeIndex[current.call]].count += 1;
+        nodeIndex[current.call].count += 1;
       }
 
       if (lastCall != "START") {
         var linkKey = [lastCall.call,current.call];
 
         if (linkIndex[linkKey] == undefined) {
-          linkIndex[linkKey] = links.length;
-          links.push({
-            "source":nodes[nodeIndex[lastCall.call]],
-            "target":nodes[nodeIndex[current.call]],
+          var item = {
+            "source":nodeIndex[lastCall.call],
+            "target":nodeIndex[current.call],
             "count":1
-          }); 
+          };
+
+          linkIndex[linkKey] = item;
+          links.push(item); 
         } else {
-          links[linkIndex[linkKey]].count += 1;
+          linkIndex[linkKey].count += 1;
         }
       } else {
-        nodeIndex["START"] = nodes.length;
-        nodes.push({
+        var startNode = {
           "call":"START",
           "count":1,
-        })
+        }
 
-        linkIndex[["START",current.call]] = links.length;
-        links.push({
-          "source":nodes[nodeIndex["START"]],
-          "target":nodes[nodeIndex[current.call]],
+        var item = {
+          "source":startNode,
+          "target":nodeIndex[current.call],
           "count":1
-        }); 
+        };
+
+        nodeIndex["START"] = startNode;
+        nodes.push(startNode)
+
+        linkIndex[["START",current.call]] = item;
+        links.push(item); 
       }
 
       lastCall = current;
@@ -174,38 +196,36 @@
   function init() {
     scale.radius = d3.scale.linear().domain([1,d3.max(nodes,function(d) { return d.count; })]).range([8,30]);
     scale.stroke = d3.scale.linear().domain([1,d3.max(links,function(d) { return d.count; })]).range([2,20]);
-        //,200]).range([2,20]).clamp(true);
-        //
     scale.stroke_self = d3.scale.log().domain([1,d3.max(links,function(d) { return d.count; })]).range([2,10]);
     scale.color = d3.scale.category20();
   }
 
   function render() {
     force.start();
-    //console.log(force.links());
     link = link.data(force.links(), function(d) { return d.source.call + "-" + d.target.call; });
     node = node.data(force.nodes(), function(d) { return d.call;});
-    //selfRef = selfRef.data(force.nodes(), function(d) { return d.id;});
     label = label.data(force.nodes(), function(d) { return d.call;});
 
     link.enter().insert('line', '.node')
       .attr('class','link')
       .style('stroke', function(d,i) {
-        return scale.color(d.source.color);
+        return "#" + colorHash(d.source.call);
       })
       .style("stroke-width", function(d,i) {
         return scale.stroke(d.count);
       })
       .attr("stroke-dasharray", "5, 10");
 
-    node.enter().append('circle')
+    node.enter().insert('circle')
       .attr("class", "node")
-      .transition()
       .attr("r", function(d) {
         return d.count ? scale.radius(d.count) : 0;
       })
       .attr("fill", function(d,i) {
         return "#" + colorHash(d.call);
+      })
+      .on('dblclick', function(d) {
+        manPageLinker(d);
       });
     
     node
@@ -219,48 +239,7 @@
       .on('dblclick', function(d) {
           manPageLinker(d);
        });
-/*
-    selfRef.enter().append('circle')
-      .style('display', function(d) {
-        return d.selfRef ? 'block' : 'none';
-      })
-      .attr("r", function(d) {
-        return d.count ? scale.radius(d.count) : 0;
-      })
-      .attr('stroke', function(d) {
-        return scale.color(d.color);
-      })
-      .attr('stroke-width', function(d) {
-        return scale.stroke_self(d.selfRefCount);
-      })
-      .attr('fill','none')
-      .attr("stroke-dasharray", "5, 10");
-*/
-
-    function manPageLinker(d) {
-      if (d.call == "START" | d.call == "END" | d.call == "") {
-        return;
-        } else {
-        window.open('http://man7.org/linux/man-pages/man2/' + d.call + '.2.html', '_blank');
-      }
-    }
-
-    node
-      .on('dblclick', function(d) {
-        manPageLinker(d);
-      });
-    
   } 
-
-  var thetick = 0;
-  function animator(){
-    thetick -= .1;
-    thetick = thetick % 10000;
-    link.attr("stroke-dashoffset", thetick.toString() + "%");
-    selfRef.attr("stroke-dashoffset", thetick.toString() + "%");
-  }
-
-  window.setInterval(animator, 66);
 
   function tick() {
     link.attr("x1", function(d) { return d.source.x; })
@@ -277,25 +256,53 @@
       })
       .attr('stroke', function(d,i) {
         if (d.call == lastCall.call) {
-        d.x += (w/2 - d.x) * 0.1
-        d.y += (h/2 - d.y) * 0.1
-          return 'red';
+          d.x += ((w - panelWidth)/2 - d.x) * 0.1
+          d.y += (h/2 - d.y) * 0.1
+          return '#A12A2A';
         } else {
           return 'none';
         }
+      })
+      .attr('stroke-width', function(d,i) {
+        if (d.call == lastCall.call) {
+          return 3;
+        } else {
+          return 0;
+        }
       });
-/*
-    selfRef
-      .attr("transform", function(d) {
-        return "translate(" + (d.x + scale.radius(d.count) * 0.7) + "," + (d.y - scale.radius(d.count) * 0.7) + ")";
-      });
-*/
+
     label
       .attr('x', function(d) { return d.x; })
       .attr('y', function(d) { return d.y + scale.radius(d.count) + 10; });
  }
 
- function processData() {
+  //util
+  var LARGEPRIME = 32452843;
+  function colorHash(str) {
+   k = 1;
+   for (chr in str) {
+     k *= str.charCodeAt(chr);
+   } 
+     k = k % LARGEPRIME;
+     return (k % 0xffffff).toString(16);
+   }
+
+   function manPageLinker(d) {
+      if (d.call == "START" | d.call == "END" | d.call == "") {
+        return;
+        } else {
+        window.open('http://man7.org/linux/man-pages/man2/' + d.call + '.2.html', '_blank');
+      }
+    }  
+
+  var DASHTICK = 0;
+  function animator(){
+    DASHTICK -= .1;
+    DASHTICK = DASHTICK % 10000;
+    link.attr("stroke-dashoffset", DASHTICK.toString() + "%");
+  }  
+
+  function processData() {
     if (q[qIndex] != undefined) {
       var data = q[qIndex];
       parseData(data);
@@ -305,6 +312,8 @@
     }
   }
 
+  //main
+  window.setInterval(animator, 66);
   window.setInterval(processData,200);
 
 </script>
